@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Insulin Rechner v17</title>
+    <title>Bolus Rechner </title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -135,7 +135,7 @@
 <body>
 
 <div class="container">
-    <h2>Insulin Rechner</h2>
+    <h2>Bolus Rechner</h2>
 
     <div class="section-title">Essen</div>
     <label>Kohlenhydrate (g)</label>
@@ -162,6 +162,17 @@
     <input type="number" id="bz_trend" placeholder="+10 oder -5">
 
     <div class="section-title">Einstellungen</div>
+    
+    <label>Insulin Typ</label>
+    <select id="insulin_typ" onchange="updateWirkdauer()">
+        <option value="rapid">Schnellwirksam (Fiasp, Lyumjev)</option>
+        <option value="normal" selected>Normal (NovoRapid, Humalog)</option>
+        <option value="regular">Alt-Insulin (Actrapid)</option>
+    </select>
+
+    <label>Wirkdauer (Std.)</label>
+    <input type="number" id="wirkdauer" value="4.0">
+
     <label>Ziel BZ</label>
     <input type="number" id="bz_ziel" value="120">
 
@@ -170,16 +181,6 @@
 
     <label>ISF (mg/dl pro Einheit)</label>
     <input type="number" id="isf" value="60">
-
-    <label>Wirkdauer Insulin (Std.)</label>
-    <input type="number" id="wirkdauer" value="4">
-
-    <label>Insulin Typ</label>
-    <select id="insulin_typ">
-        <option value="rapid">Schnellwirksam (Fiasp, Lyumjev)</option>
-        <option value="normal">Normal (NovoRapid, Humalog)</option>
-        <option value="regular">Alt-Insulin (Actrapid)</option>
-    </select>
 
     <button onclick="berechne()">Berechnen</button>
 
@@ -216,7 +217,7 @@
         </div>
     </div>
 
-    <p class="warning">KEIN MEDIZINPRODUKT.</p>
+    <p class="warning">DEMO-VERSION. KEIN MEDIZINPRODUKT.</p>
     
     <div class="license-footer">
         App by <strong>Stefan Zuegg</strong> • 2025<br>
@@ -226,6 +227,20 @@
 </div>
 
 <script>
+    // Funktion zum autom. Anpassen der Wirkdauer
+    function updateWirkdauer() {
+        let typ = document.getElementById('insulin_typ').value;
+        let dauerFeld = document.getElementById('wirkdauer');
+        
+        if (typ === 'rapid') {
+            dauerFeld.value = "3.5";
+        } else if (typ === 'normal') {
+            dauerFeld.value = "4.5";
+        } else if (typ === 'regular') {
+            dauerFeld.value = "6.0";
+        }
+    }
+
     function berechne() {
         // --- WERTE HOLEN ---
         let kh = parseFloat(document.getElementById('kh').value) || 0;
@@ -253,12 +268,10 @@
         // --- 1. IOB BERECHNUNG (Lineare Abnahme) ---
         let iob = 0;
         if (lastBolus > 0 && lastTime < wirkdauer) {
-            // Anteil der noch übrig ist
             let remainingTime = wirkdauer - lastTime;
             iob = lastBolus * (remainingTime / wirkdauer);
         }
         if (iob < 0) iob = 0;
-
 
         // --- 2. INSULIN BEDARF ---
 
@@ -266,11 +279,94 @@
         let insulinKh = kh / icr;
 
         // B) Korrektur (mit Trend)
-        let insulinKorrRaw = 0; // Brutto Korrektur
-        let insulinKorrNet = 0; // Netto (nach IOB Abzug)
+        let insulinKorrRaw = 0; 
+        let insulinKorrNet = 0; 
         let prognoseBz = bz_aktuell; 
 
         if (bzInput !== "") {
             prognoseBz = bz_aktuell + (bz_trend * 2);
-            // Rohe Korrektur berechnen
             insulinKorrRaw = (prognoseBz - bz_ziel) / isf;
+            
+            // IOB Logik
+            insulinKorrNet = insulinKorrRaw - iob;
+        }
+
+        // C) FPE
+        let kcalFettProt = (fett * 9) + (ew * 4);
+        let fpeCount = kcalFettProt / 100;
+        let insulinFpe = fpeCount * (10 / icr);
+
+        // --- 3. SUMME SOFORT ---
+        let totalSofort = insulinKh + insulinKorrNet;
+        if (totalSofort < 0) totalSofort = 0;
+
+
+        // --- 4. ANZEIGEN LOGIK ---
+
+        // SEA
+        let timingText = "Ohne BZ unklar";
+        let timingColor = "#333";
+        if (bzInput !== "") {
+            if (bz_aktuell < 70 && bz_aktuell > 0) {
+                 timingText = "⚠️ Erst essen (Hypo)!";
+                 timingColor = "#cc0000";
+            } else {
+                if (typ === 'rapid') { 
+                    if(bz_aktuell > 180) timingText = "10-15 Min warten";
+                    else timingText = "0-5 Min / Sofort";
+                } 
+                else if (typ === 'normal') { 
+                    if(bz_aktuell > 200) timingText = "20-30 Min warten";
+                    else if(bz_aktuell > 150) timingText = "15-20 Min warten";
+                    else timingText = "10-15 Min warten";
+                } 
+                else if (typ === 'regular') timingText = "30-45 Min warten";
+            }
+        }
+
+        // FPE Dauer
+        let fpeTimeText = "-";
+        if (fpeCount > 0.5) {
+            if (fpeCount <= 1.5) fpeTimeText = "2 Std.";
+            else if (fpeCount <= 3.0) fpeTimeText = "3-4 Std.";
+            else fpeTimeText = "Max. 6 Std.";
+        }
+
+        // --- DOM UPDATES ---
+        document.getElementById('res_kh').innerText = insulinKh.toFixed(2) + " IE";
+        document.getElementById('res_korr_raw').innerText = insulinKorrRaw.toFixed(2) + " IE";
+        
+        if (iob > 0.05) {
+            document.getElementById('res_iob').innerText = iob.toFixed(2);
+            document.getElementById('iob_display').style.display = 'block';
+        } else {
+            document.getElementById('iob_display').style.display = 'none';
+        }
+
+        document.getElementById('res_fpe_small').innerText = insulinFpe.toFixed(2) + " IE";
+        
+        if (bz_trend !== 0 && bzInput !== "") {
+            document.getElementById('trend_note').innerText = 
+                `(Korrektur auf Basis: ${prognoseBz.toFixed(0)} mg/dl)`;
+            document.getElementById('trend_note').style.display = 'block';
+        } else {
+            document.getElementById('trend_note').style.display = 'none';
+        }
+
+        document.getElementById('res_total').innerText = totalSofort.toFixed(2) + " IE";
+        document.getElementById('res_fpe_insulin').innerText = insulinFpe.toFixed(2) + " IE";
+        
+        let timingEl = document.getElementById('res_timing_text');
+        timingEl.innerText = timingText;
+        timingEl.style.color = timingColor;
+        if(timingColor !== "#333") timingEl.style.fontWeight = "bold";
+
+        document.getElementById('res_fpe_time').innerText = fpeTimeText;
+        document.getElementById('res_fpe_count').innerText = fpeCount.toFixed(1);
+        
+        document.getElementById('result').style.display = 'block';
+    }
+</script>
+
+</body>
+</html>
