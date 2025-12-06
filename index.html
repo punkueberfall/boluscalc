@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bolus Rechner</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f4f4f9;
+            color: #333;
+            padding: 20px;
+            margin: 0;
+        }
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        h2 { text-align: center; color: #2c3e50; margin-bottom: 10px; }
+        label { display: block; margin-top: 10px; font-weight: bold; font-size: 0.9rem; }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 16px; 
+        }
+        .section-title {
+            margin-top: 20px;
+            padding-bottom: 5px;
+            border-bottom: 2px solid #eee;
+            color: #555;
+            font-weight: bold;
+        }
+        button {
+            width: 100%;
+            background-color: #007bff;
+            color: white;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            margin-top: 20px;
+            cursor: pointer;
+        }
+        button:active { background-color: #0056b3; }
+        
+        /* Ergebnis Bereich Styles */
+        #result {
+            margin-top: 25px;
+            padding: 20px;
+            background-color: #f0f7ff;
+            border: 1px solid #cce5ff;
+            border-radius: 12px;
+            display: none;
+        }
+        .result-small {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            color: #666;
+            margin-bottom: 4px;
+        }
+        .trend-info {
+            font-size: 0.8rem;
+            color: #888;
+            text-align: right;
+            font-style: italic;
+            margin-bottom: 10px;
+        }
+        
+        /* Hauptzahlen */
+        .result-big-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-top: 1px solid #dae0e5;
+        }
+        .label-main { font-weight: bold; font-size: 1.1rem; }
+        .val-main { font-weight: 800; font-size: 1.4rem; }
+        
+        .color-blue { color: #007bff; }
+        .color-orange { color: #d35400; }
+
+        /* Timing Box unten */
+        .info-box {
+            background-color: #fff;
+            border: 1px solid #e2e6ea;
+            border-radius: 8px;
+            padding: 10px;
+            margin-top: 15px;
+        }
+        .info-line {
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+            display: flex;
+            justify-content: space-between;
+        }
+        .info-label { font-weight: bold; color: #555; }
+        
+        .warning {
+            font-size: 0.7rem;
+            color: #999;
+            text-align: center;
+            margin-top: 20px;
+        }
+        .license-note {
+            font-size: 0.6rem;
+            color: #bbb;
+            text-align: center;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Bolus Rechner</h2>
+
+    <div class="section-title">Essen</div>
+    <label>Kohlenhydrate (g)</label>
+    <input type="number" id="kh" placeholder="0">
+
+    <label>Eiweiß (g)</label>
+    <input type="number" id="ew" placeholder="0">
+
+    <label>Fett (g)</label>
+    <input type="number" id="fett" placeholder="0">
+
+    <div class="section-title">Einstellungen</div>
+    <label>ICR (g KH pro Einheit)</label>
+    <input type="number" id="icr" value="33">
+
+    <label>ISF (mg/dl pro Einheit)</label>
+    <input type="number" id="isf" value="60">
+
+    <div class="section-title">Blutzucker (mg/dl)</div>
+    <label>Aktueller BZ</label>
+    <input type="number" id="bz_aktuell" placeholder="120">
+
+    <label>Trend Delta (letzte 15 Min)</label>
+    <input type="number" id="bz_trend" placeholder="+10 oder -5">
+
+    <label>Ziel BZ</label>
+    <input type="number" id="bz_ziel" value="120">
+
+    <label>Insulin Typ</label>
+    <select id="insulin_typ">
+        <option value="rapid">Schnellwirksam (Fiasp, Lyumjev)</option>
+        <option value="normal">Normal (NovoRapid, Humalog)</option>
+        <option value="regular">Alt-Insulin (Actrapid)</option>
+    </select>
+
+    <button onclick="berechne()">Berechnen</button>
+
+    <div id="result">
+        <div class="result-small"><span>Anteil KH:</span> <span id="res_kh">0.0 IE</span></div>
+        <div class="result-small"><span>Anteil Korrektur:</span> <span id="res_korr">0.0 IE</span></div>
+        <div class="result-small"><span>Anteil FPE:</span> <span id="res_fpe_small">0.0 IE</span></div>
+        
+        <div class="trend-info" id="trend_note"></div>
+
+        <div class="result-big-row color-blue">
+            <span class="label-main">Sofort Bolus:</span>
+            <span class="val-main" id="res_total">0.0 IE</span>
+        </div>
+
+        <div class="result-big-row color-orange">
+            <span class="label-main">FPE Bolus:</span>
+            <span class="val-main" id="res_fpe_insulin">0.0 IE</span>
+        </div>
+
+        <div class="info-box">
+            <div class="info-line">
+                <span class="info-label">🕒 Injektion:</span>
+                <span id="res_timing_text">-</span>
+            </div>
+            <div class="info-line">
+                <span class="info-label">⏳ FPE Dauer:</span>
+                <span>
+                    <span id="res_fpe_time">-</span> 
+                    <span style="font-size:0.75rem; color:#999;">(<span id="res_fpe_count">0</span> FPE)</span>
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <p class="warning">DEMO-VERSION. NICHT FÜR MEDIZINISCHE ZWECKE NUTZEN.</p>
+    <p class="license-note">App by Stefan Zuegg • 2025 <br>Lizenz: CC BY-NC-SA 4.0</p>
+</div>
+
+<script>
+    function berechne() {
+        // Werte holen
+        let kh = parseFloat(document.getElementById('kh').value) || 0;
+        let ew = parseFloat(document.getElementById('ew').value) || 0;
+        let fett = parseFloat(document.getElementById('fett').value) || 0;
+        
+        let icr = parseFloat(document.getElementById('icr').value);
+        let isf = parseFloat(document.getElementById('isf').value);
+        
+        // Prüfen ob BZ leer ist
+        let bzInput = document.getElementById('bz_aktuell').value;
+        let bz_aktuell = parseFloat(bzInput) || 0;
+        
+        let bz_trend = parseFloat(document.getElementById('bz_trend').value) || 0;
+        let bz_ziel = parseFloat(document.getElementById('bz_ziel').value) || 120;
+        let typ = document.getElementById('insulin_typ').value;
+
+        if (!icr || !isf) {
+            alert("Bitte ICR und ISF eingeben!");
+            return;
+        }
+
+        // --- BERECHNUNG ---
+
+        // 1. KH Bolus
+        let insulinKh = kh / icr;
+
+        // 2. Trend & Korrektur
+        // Nur berechnen, wenn BZ Feld NICHT leer ist
+        let insulinKorr = 0;
+        let prognoseBz = bz_aktuell; 
+
+        if (bzInput !== "") {
+            prognoseBz = bz_aktuell + (bz_trend * 2);
+            insulinKorr = (prognoseBz - bz_ziel) / isf;
+        }
+
+        // 3. FPE
+        let kcalFettProt = (fett * 9) + (ew * 4);
+        let fpeCount = kcalFettProt / 100;
+        let insulinFpe = fpeCount * (10 / icr);
+
+        // 4. Summe Sofort
+        let totalSofort = insulinKh + insulinKorr;
+        if (totalSofort < 0) totalSofort = 0;
+
+
+        // --- LOGIK ZEITEN ---
+
+        // SEA (Spritz-Ess-Abstand)
+        let timingText = "";
+        let timingColor = "#333";
+
+        // Timing-Logik nur anzeigen, wenn auch ein BZ eingegeben wurde
+        if (bzInput !== "") {
+            if (bz_aktuell < 70 && bz_aktuell > 0) {
+                 timingText = "⚠️ Erst essen (Hypo)!";
+                 timingColor = "#cc0000";
+            } else {
+                if (typ === 'rapid') { 
+                    if(bz_aktuell > 180) timingText = "10-15 Min warten";
+                    else timingText = "0-5 Min / Sofort";
+                } 
+                else if (typ === 'normal') { 
+                    if(bz_aktuell > 200) timingText = "20-30 Min warten";
+                    else if(bz_aktuell > 150) timingText = "15-20 Min warten";
+                    else timingText = "10-15 Min warten";
+                } 
+                else if (typ === 'regular') { 
+                    timingText = "30-45 Min warten";
+                }
+            }
+        } else {
+            timingText = "Ohne BZ-Wert unklar";
+        }
+
+        // FPE Dauer (Max 6h)
+        let fpeTimeText = "-";
+        if (fpeCount > 0.5) {
+            if (fpeCount <= 1.5) fpeTimeText = "3 Std.";
+            else if (fpeCount <= 3.0) fpeTimeText = "4-5 Std.";
+            else fpeTimeText = "Max. 6 Std.";
+        }
+
+        // --- AUSGABE ---
+        document.getElementById('res_kh').innerText = insulinKh.toFixed(2) + " IE";
+        document.getElementById('res_korr').innerText = insulinKorr.toFixed(2) + " IE";
+        document.getElementById('res_fpe_small').innerText = insulinFpe.toFixed(2) + " IE";
+        
+        // Trend Info
+        if (bz_trend !== 0 && bzInput !== "") {
+            document.getElementById('trend_note').innerText = 
+                `(Korrektur auf Basis: ${prognoseBz.toFixed(0)} mg/dl)`;
+            document.getElementById('trend_note').style.display = 'block';
+        } else {
+            document.getElementById('trend_note').style.display = 'none';
+        }
+
+        // Hauptwerte
+        document.getElementById('res_total').innerText = totalSofort.toFixed(2) + " IE";
+        document.getElementById('res_fpe_insulin').innerText = insulinFpe.toFixed(2) + " IE";
+        
+        // Info Box
+        let timingEl = document.getElementById('res_timing_text');
+        timingEl.innerText = timingText;
+        timingEl.style.color = timingColor;
+        if(timingColor !== "#333") timingEl.style.fontWeight = "bold";
+
+        document.getElementById('res_fpe_time').innerText = fpeTimeText;
+        document.getElementById('res_fpe_count').innerText = fpeCount.toFixed(1);
+        
+        document.getElementById('result').style.display = 'block';
+    }
+</script>
+
+</body>
+</html>
