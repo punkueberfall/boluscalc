@@ -111,12 +111,26 @@
         let kh = parseFloat(document.getElementById('kh').value)||0; let ew = parseFloat(document.getElementById('ew').value)||0; let fett = parseFloat(document.getElementById('fett').value)||0; let sport = parseFloat(document.getElementById('sport').value)||0;
         let lb = parseFloat(document.getElementById('last_bolus').value)||0; let lt = parseFloat(document.getElementById('last_time').value)||0;
         let icr = parseFloat(document.getElementById('icr').value); let isf = parseFloat(document.getElementById('isf').value); let bz = parseFloat(document.getElementById('bz_aktuell').value);
+        let bzTrend = parseFloat(document.getElementById('bz_trend').value)||0;
+
         let iob = (lb > 0 && lt < 2) ? lb * ((2 - lt)/2) : 0;
-        let insKh = kh / icr; let insKorr = isNaN(bz) ? 0 : ((bz + (parseFloat(document.getElementById('bz_trend').value||0)*2)) - 120) / isf - iob;
-        let insFpe = (((fett * 9) + (ew * 4)) / 100) * (10 / icr); let totS = Math.max(0, (insKh + insKorr) * (sport>0 ? (100-sport)/100 : 1));
-        document.getElementById('res_kh').innerText = insKh.toFixed(2)+" IE"; document.getElementById('res_korr_raw').innerText = insKorr.toFixed(2)+" IE"; document.getElementById('res_total').innerText = totS.toFixed(2)+" IE"; document.getElementById('res_fpe_insulin').innerText = insFpe.toFixed(2)+" IE";
+        let insKh = kh / icr; let insKorr = isNaN(bz) ? 0 : ((bz + (bzTrend*2)) - 120) / isf - iob;
+        let insFpe = (((fett * 9) + (ew * 4)) / 100) * (10 / icr); 
+        let totS = Math.max(0, (insKh + insKorr) * (sport>0 ? (100-sport)/100 : 1));
+
+        document.getElementById('res_kh').innerText = insKh.toFixed(2)+" IE"; 
+        document.getElementById('res_korr_raw').innerText = insKorr.toFixed(2)+" IE"; 
+        document.getElementById('res_total').innerText = totS.toFixed(2)+" IE"; 
+        document.getElementById('res_fpe_insulin').innerText = insFpe.toFixed(2)+" IE";
+        
+        // SEA Logik wiederhergestellt
+        let timingText = isNaN(bz) ? "Unklar" : (bz < 70 ? "Hypo!" : (bz > 180 ? "15-20 Min" : "10-15 Min"));
+        document.getElementById('res_timing_text').innerText = timingText;
+
         document.getElementById('result').style.display = 'block';
-        let now = new Date(); currentCalc = { time: `${now.getDate()}/${now.getMonth()+1}/${now.getFullYear().toString().slice(-2)} ${now.getHours()}:${now.getMinutes()}`, kh:kh, ew:ew, fett:fett, sport:sport, bz:isNaN(bz)?"-":bz, bz_trend:parseFloat(document.getElementById('bz_trend').value||0), iob:iob.toFixed(2), icr:icr, isf:isf, insulin_typ:"Lyumjev", ie_sofort:totS.toFixed(1), ie_fpe:insFpe.toFixed(1), token:syncSettings.token };
+
+        let now = new Date(); 
+        currentCalc = { time: `${now.getDate()}/${now.getMonth()+1}/${now.getFullYear().toString().slice(-2)} ${now.getHours()}:${now.getMinutes()}`, kh:kh, ew:ew, fett:fett, sport:sport, bz:isNaN(bz)?"-":bz, bz_trend:bzTrend, iob:iob.toFixed(2), icr:icr, isf:isf, insulin_typ:"Lyumjev", ie_sofort:totS.toFixed(1), ie_fpe:insFpe.toFixed(1), token:syncSettings.token };
     }
     async function saveToHistory() {
         if(!currentCalc) return; const btn = document.getElementById('save_btn'); btn.innerText = "Sync..."; btn.disabled = true;
