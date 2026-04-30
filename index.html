@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Insulin App - v25 Cloud Sync</title>
+    <title>Insulin App - v26 Secure Sync</title>
     <style>
         body { font-family: -apple-system, sans-serif; background: #f4f4f9; color: #333; margin: 0; padding: 20px 20px 80px 20px; }
         .container { max-width: 400px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
@@ -29,7 +29,6 @@
         .btn-delete { position: absolute; top: 5px; right: 5px; background: none; color: #dc3545; padding: 5px; width: auto; font-size: 1rem; }
         .warning { font-size: 0.7rem; color: #999; text-align: center; margin-top: 25px; }
         .license-footer { font-size: 0.7rem; color: #bbb; text-align: center; margin-top: 15px; padding-top: 10px; border-top: 1px dashed #eee; line-height: 1.4; }
-
         .tab-content { display: none; }
         .tab-content.active { display: block; }
         .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; display: flex; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); padding-bottom: env(safe-area-inset-bottom); }
@@ -80,7 +79,7 @@
                 <div class="info-line" id="fpe_split_line" style="display:none;"><span>FPE Split:</span><span id="res_fpe_split"></span></div>
             </div>
             <div class="limit-alert" id="max_warning">Warnung: Limit überschritten!</div>
-            <button class="btn-save" id="save_btn" onclick="saveToHistory()">💉 Speichern & Cloud Sync</button>
+            <button class="btn-save" id="save_btn" onclick="saveToHistory()">Speichern & Cloud Sync</button>
         </div>
 
         <p class="warning">DEMO-VERSION. KEIN MEDIZINPRODUKT.</p>
@@ -97,6 +96,12 @@
         <div class="section-title">Insulin</div>
         <select id="insulin_typ" onchange="updateWirkdauer()"><option value="rapid" selected>Schnell (Lyumjev)</option><option value="normal">Normal</option></select>
         <label>Wirkdauer (Std.)</label><input type="number" id="wirkdauer" value="2.0">
+        
+        <div class="section-title">Cloud Sync</div>
+        <label>Google Script URL</label>
+        <input type="text" id="sync_url" placeholder="https://script.google.com/..." onchange="saveSyncSettings()">
+        <label>Sync Passwort</label>
+        <input type="password" id="sync_token" placeholder="Dein geheimes Passwort" onchange="saveSyncSettings()">
     </div>
 
     <div id="tab-history" class="tab-content">
@@ -120,12 +125,19 @@
     }
 
     let profiles = { morgens:{icr:20,isf:60,ziel:120,maxbolus:15}, mittags:{icr:33,isf:60,ziel:120,maxbolus:15}, abends:{icr:30,isf:60,ziel:120,maxbolus:15} };
+    let syncSettings = { url: "", token: "" };
     let historyData = []; let currentCalc = null;
 
     window.onload = function() {
         if(localStorage.getItem('insulinProfiles')) profiles = JSON.parse(localStorage.getItem('insulinProfiles'));
         if(localStorage.getItem('insulinHistory')) historyData = JSON.parse(localStorage.getItem('insulinHistory'));
-        loadProfile(); renderHistory();
+        if(localStorage.getItem('insulinSync')) syncSettings = JSON.parse(localStorage.getItem('insulinSync'));
+        
+        loadProfile(); 
+        document.getElementById('sync_url').value = syncSettings.url;
+        document.getElementById('sync_token').value = syncSettings.token;
+        renderHistory();
+        
         const urlParams = new URLSearchParams(window.location.search);
         if(urlParams.has('ew')) document.getElementById('ew').value = urlParams.get('ew');
         if(urlParams.has('fett')) document.getElementById('fett').value = urlParams.get('fett');
@@ -142,6 +154,11 @@
         profiles[t].icr = parseFloat(document.getElementById('icr').value); profiles[t].isf = parseFloat(document.getElementById('isf').value);
         profiles[t].ziel = parseFloat(document.getElementById('bz_ziel').value); profiles[t].maxbolus = parseFloat(document.getElementById('max_bolus').value);
         localStorage.setItem('insulinProfiles', JSON.stringify(profiles));
+    }
+    function saveSyncSettings() {
+        syncSettings.url = document.getElementById('sync_url').value.trim();
+        syncSettings.token = document.getElementById('sync_token').value;
+        localStorage.setItem('insulinSync', JSON.stringify(syncSettings));
     }
     function updateWirkdauer() {
         let t = document.getElementById('insulin_typ').value;
@@ -175,27 +192,31 @@
         document.getElementById('result').style.display = 'block';
 
         let now = new Date();
-        currentCalc = { time: `${now.getDate()}/${now.getMonth()+1}/${now.getFullYear().toString().slice(-2)} ${now.getHours()}:${now.getMinutes()}`, kh:kh, bz:isNaN(bz)?"-":bz, ie_sofort:totSofort.toFixed(1), ie_fpe:insFpe.toFixed(1) };
+        currentCalc = { 
+            time: `${now.getDate()}/${now.getMonth()+1}/${now.getFullYear().toString().slice(-2)} ${now.getHours()}:${now.getMinutes()}`, 
+            kh:kh, bz:isNaN(bz)?"-":bz, ie_sofort:totSofort.toFixed(1), ie_fpe:insFpe.toFixed(1),
+            token: syncSettings.token // Passwort wird an den Payload gehängt
+        };
     }
 
     async function saveToHistory() {
         if(!currentCalc) return;
         const btn = document.getElementById('save_btn');
-        btn.innerText = "⏳ Synchronisiere..."; btn.disabled = true;
+        btn.innerText = "Synchronisiere..."; btn.disabled = true;
 
         // 1. Lokal
         historyData.unshift(currentCalc); if(historyData.length>50) historyData.pop();
         localStorage.setItem('insulinHistory', JSON.stringify(historyData));
 
-        // 2. Cloud (Google Sheets)
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx7myUeaHPpqR3kFlnzM2Qclr79abZtQWKkFybK8o8SZ4aehIce2FRHHI5RiucBv_g88Q/exec"; 
-        
-        try {
-            await fetch(SCRIPT_URL, { method: "POST", mode: "no-cors", body: JSON.stringify(currentCalc) });
-        } catch(e) { console.error("Sync Error", e); }
+        // 2. Cloud
+        if (syncSettings.url && syncSettings.token) {
+            try {
+                await fetch(syncSettings.url, { method: "POST", mode: "no-cors", body: JSON.stringify(currentCalc) });
+            } catch(e) { console.error("Sync Error", e); }
+        }
 
         renderHistory(); resetInputs();
-        btn.innerText = "💉 Speichern & Cloud Sync"; btn.disabled = false;
+        btn.innerText = "Speichern & Cloud Sync"; btn.disabled = false;
         switchTab('tab-history', document.querySelectorAll('.nav-item')[2]);
     }
 
