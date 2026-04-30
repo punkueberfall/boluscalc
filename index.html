@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Insulin Rechner v20</title>
+    <title>Insulin Rechner v21</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -207,12 +207,12 @@
 
     <label>Insulin Typ</label>
     <select id="insulin_typ" onchange="updateWirkdauer()">
-        <option value="rapid">Schnell (Lyumjev, Fiasp)</option>
-        <option value="normal" selected>Normal (NovoRapid, Humalog)</option>
+        <option value="rapid" selected>Schnell (Lyumjev, Fiasp)</option>
+        <option value="normal">Normal (NovoRapid, Humalog)</option>
         <option value="regular">Alt-Insulin</option>
     </select>
     <label>Wirkdauer (Std.)</label>
-    <input type="number" id="wirkdauer" value="4.0">
+    <input type="number" id="wirkdauer" value="2.0">
 
     <button onclick="berechne()">Berechnen</button>
 
@@ -266,7 +266,9 @@
         if (savedHistory) historyData = JSON.parse(savedHistory);
         loadProfile();
         renderHistory();
-        updateWirkdauer();
+        
+        // Removed updateWirkdauer() call here so it doesn't overwrite the static 2.0 value if someone loads the page but has it set differently in their mind, 
+        // though updateWirkdauer would also set it to 2.0 now.
     };
 
     function loadProfile() {
@@ -287,7 +289,7 @@
     function updateWirkdauer() {
         let typ = document.getElementById('insulin_typ').value;
         let dauerFeld = document.getElementById('wirkdauer');
-        if (typ === 'rapid') dauerFeld.value = "3.5";
+        if (typ === 'rapid') dauerFeld.value = "2.0";
         else if (typ === 'normal') dauerFeld.value = "4.0";
         else if (typ === 'regular') dauerFeld.value = "6.0";
     }
@@ -324,7 +326,6 @@
                 const text = e.target.result;
                 const rows = text.split("\n");
                 let newHistory = [];
-                // Einfacher Parser für die oben erstellte CSV
                 for (let i = 1; i < rows.length; i++) {
                     const cols = rows[i].split(";");
                     if (cols.length >= 5) {
@@ -346,7 +347,7 @@
         reader.readAsText(file);
     }
 
-    // --- RECHNUNG & REST (Identisch zu V19) ---
+    // --- RECHNUNG & REST ---
     function getFormattedTimestamp() {
         const now = new Date();
         return `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getFullYear()).slice(-2)} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
@@ -360,7 +361,7 @@
         let lastTime = parseFloat(document.getElementById('last_time').value) || 0;
         let icr = parseFloat(document.getElementById('icr').value);
         let isf = parseFloat(document.getElementById('isf').value);
-        let wirkdauer = parseFloat(document.getElementById('wirkdauer').value) || 4;
+        let wirkdauer = parseFloat(document.getElementById('wirkdauer').value) || 2;
         let bzInput = document.getElementById('bz_aktuell').value;
         let bz_aktuell = parseFloat(bzInput) || 0;
         let bz_trend = parseFloat(document.getElementById('bz_trend').value) || 0;
