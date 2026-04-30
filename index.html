@@ -107,15 +107,11 @@
     function saveProfile() { let t = document.getElementById('profil_typ').value; profiles[t].icr = parseFloat(document.getElementById('icr').value); profiles[t].isf = parseFloat(document.getElementById('isf').value); localStorage.setItem('insulinProfiles', JSON.stringify(profiles)); }
     function saveSyncSettings() { syncSettings.url = document.getElementById('sync_url').value.trim(); syncSettings.token = document.getElementById('sync_token').value; localStorage.setItem('insulinSync', JSON.stringify(syncSettings)); }
     function resetInputs() { ['kh','ew','fett','sport','bz_aktuell','bz_trend','last_bolus','last_time'].forEach(id => document.getElementById(id).value = ""); document.getElementById('result').style.display = 'none'; }
-    function berechne() {
-        let kh = parseFloat(document.getElementById('kh').value)||0; let ew = parseFloat(document.getElementById('ew').value)||0; let fett = parseFloat(document.getElementById('fett').value)||0; let sport = parseFloat(document.getElementById('sport').value)||0;
-        let lb = parseFloat(document.getElementById('last_bolus').value)||0; let lt = parseFloat(document.getElementById('last_time').value)||0;
-        let icr = parseFloat(document.getElementById('icr').value); let isf = parseFloat(document.getElementById('isf').value); let bz = parseFloat(document.getElementById('bz_aktuell').value);
-        let bzTrend = parseFloat(document.getElementById('bz_trend').value)||0;
-
-        let iob = (lb > 0 && lt < 2) ? lb * ((2 - lt)/2) : 0;
+    let iob = (lb > 0 && lt < 2) ? lb * ((2 - lt)/2) : 0;
         let insKh = kh / icr; let insKorr = isNaN(bz) ? 0 : ((bz + (bzTrend*2)) - 120) / isf - iob;
-        let insFpe = (((fett * 9) + (ew * 4)) / 100) * (10 / icr); 
+        
+        let fpeCount = ((fett * 9) + (ew * 4)) / 100;
+        let insFpe = fpeCount * (10 / icr); 
         let totS = Math.max(0, (insKh + insKorr) * (sport>0 ? (100-sport)/100 : 1));
 
         document.getElementById('res_kh').innerText = insKh.toFixed(2)+" IE"; 
@@ -123,14 +119,13 @@
         document.getElementById('res_total').innerText = totS.toFixed(2)+" IE"; 
         document.getElementById('res_fpe_insulin').innerText = insFpe.toFixed(2)+" IE";
         
-        // SEA Logik wiederhergestellt
-       // Dynamische SEA Logik inkl. Trend
+        // Dynamische SEA Logik inkl. Trend
         let timingText = "Unklar";
         if (!isNaN(bz)) {
             if (bz < 70) {
                 timingText = "Hypo! Erst essen, später spritzen";
             } else if (bzTrend <= -10) {
-                timingText = "Stark fallend: Kein SEA (Spritzen zum/nach Essen)";
+                timingText = "Stark fallend: Kein SEA (Spritzen nach Essen)";
             } else if (bzTrend <= -3 && bz < 130) {
                 timingText = "Fallend: Spritzen direkt zum Essen";
             } else if (bz > 180 && bzTrend > -5) {
@@ -142,6 +137,29 @@
             }
         }
         document.getElementById('res_timing_text').innerText = timingText;
+
+        // FPE Split Empfehlung
+        if(insFpe > 0) {
+            document.getElementById('fpe_split_line').style.display = 'flex';
+            let fpeText = "";
+            if (fpeCount <= 1.5) {
+                fpeText = `${insFpe.toFixed(1)} IE in ca. 1.5 - 2 Std.`;
+            } else if (fpeCount <= 2.5) {
+                let half = (insFpe / 2).toFixed(1);
+                fpeText = `${half} IE in 1.5 Std, ${half} IE in 3 Std.`;
+            } else {
+                let half = (insFpe / 2).toFixed(1);
+                fpeText = `${half} IE in 2 Std, ${half} IE in 4 Std.`;
+            }
+            document.getElementById('res_fpe_split').innerText = fpeText;
+        } else {
+            document.getElementById('fpe_split_line').style.display = 'none';
+        }
+
+        document.getElementById('result').style.display = 'block';
+
+        let now = new Date(); 
+        currentCalc = { time: `${now.getDate()}/${now.getMonth()+1}/${now.getFullYear().toString().slice(-2)} ${now.getHours()}:${now.getMinutes()}`, kh:kh, ew:ew, fett:fett, sport:sport, bz:isNaN(bz)?"-":bz, bz_trend:bzTrend, iob:iob.toFixed(2), icr:icr, isf:isf, insulin_typ:"Lyumjev", ie_sofort:totS.toFixed(1), ie_fpe:insFpe.toFixed(1), token:syncSettings.token };
 
         document.getElementById('result').style.display = 'block';
 
