@@ -28,4 +28,267 @@
         .history-item { background: #fff; border: 1px solid #ddd; border-left: 4px solid #007bff; padding: 10px; margin-bottom: 10px; border-radius: 6px; position: relative; font-size: 0.85rem; }
         .btn-delete { position: absolute; top: 5px; right: 5px; background: none; color: #dc3545; padding: 5px; width: auto; font-size: 1rem; }
         .warning { font-size: 0.7rem; color: #999; text-align: center; margin-top: 25px; }
-        .license-footer { font-size: 0.7rem
+        .license-footer { font-size: 0.7rem; color: #bbb; text-align: center; margin-top: 15px; padding-top: 10px; border-top: 1px dashed #eee; line-height: 1.4; }
+        .tab-content { display: none; } .tab-content.active { display: block; }
+        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; display: flex; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); padding-bottom: env(safe-area-inset-bottom); }
+        .nav-item { flex: 1; text-align: center; padding: 15px 0; color: #666; cursor: pointer; font-size: 0.9rem; font-weight: bold; }
+        .nav-item.active { color: #007bff; border-top: 3px solid #007bff; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>Insulin Rechner</h2>
+    
+    <div id="tab-calc" class="tab-content active">
+        <div class="section-title">Bolus (MacroFactor Order)</div>
+        <label>Eiweiß (g)</label><input type="number" id="ew" placeholder="0">
+        <label>Fett (g)</label><input type="number" id="fett" placeholder="0">
+        <label>Kohlenhydrate (g)</label><input type="number" id="kh" placeholder="0">
+        
+        <div class="section-title">BZ & Korrektur</div>
+        <div style="display:flex; gap:10px;">
+            <div style="flex:1"><label>Akt. BZ</label><input type="number" id="bz_aktuell" placeholder="120"></div>
+            <div style="flex:1"><label>Trend</label><input type="number" id="bz_trend" placeholder="0"></div>
+        </div>
+        <label>Sport Reduktion (%)</label><input type="number" id="sport" placeholder="0">
+        
+        <div class="section-title">IOB</div>
+        <div style="display:flex; gap:10px;">
+            <div style="flex:1"><label>Letzte IE</label><input type="number" id="last_bolus" placeholder="0"></div>
+            <div style="flex:1"><label>Vor Std.</label><input type="number" id="last_time" placeholder="0"></div>
+        </div>
+        
+        <div class="btn-group">
+            <button onclick="berechne()">Berechnen</button>
+            <button class="btn-reset" onclick="resetInputs()">Reset</button>
+        </div>
+        
+        <div id="result">
+            <div class="result-small"><span>Essen:</span> <span id="res_kh">0.0 IE</span></div>
+            <div class="result-small"><span>Korr:</span> <span id="res_korr_raw">0.0 IE</span></div>
+            <div class="result-small" id="iob_display" style="display:none; color:#d35400;"><span>- IOB:</span> <span id="res_iob">0.0 IE</span></div>
+            <div class="result-big-row color-blue"><b>Sofort:</b><span class="val-main" id="res_total">0.0 IE</span></div>
+            <div class="result-big-row color-orange"><b>FPE:</b><span class="val-main" id="res_fpe_insulin">0.0 IE</span></div>
+            
+            <div class="info-box">
+                <div class="info-line"><span>SEA:</span><span id="res_timing_text" style="text-align: right; font-weight: bold;">-</span></div>
+                <div class="info-line" id="fpe_split_line" style="display:none;"><span>FPE:</span><span id="res_fpe_split" style="text-align: right;"></span></div>
+            </div>
+            
+            <button class="btn-save" id="save_btn" onclick="saveToHistory()">Speichern & Cloud Sync</button>
+        </div>
+        
+        <p class="warning">DEMO-VERSION. KEIN MEDIZINPRODUKT.</p>
+        <div class="license-footer">App by <strong>punkueberfall</strong> • CC BY-NC-SA 4.0</div>
+    </div>
+    
+    <div id="tab-settings" class="tab-content">
+        <div class="section-title">Profile</div>
+        <select id="profil_typ" onchange="loadProfile()">
+            <option value="morgens">Morgens</option>
+            <option value="mittags">Mittags</option>
+            <option value="abends">Abends</option>
+        </select>
+        <label>ICR</label><input type="number" id="icr" onchange="saveProfile()">
+        <label>ISF</label><input type="number" id="isf" onchange="saveProfile()">
+        
+        <div class="section-title">Cloud</div>
+        <label>URL</label><input type="text" id="sync_url" onchange="saveSyncSettings()">
+        <label>Passwort</label><input type="password" id="sync_token" onchange="saveSyncSettings()">
+    </div>
+    
+    <div id="tab-history" class="tab-content">
+        <div class="section-title">Verlauf</div>
+        <div class="backup-zone">
+            <button class="btn-backup btn-cloud-load" id="load_btn" onclick="loadFromCloud()">Cloud Download</button>
+            <button class="btn-backup" onclick="exportToCSV()">Export CSV</button>
+        </div>
+        <div id="history_list" style="margin-top:15px;"></div>
+    </div>
+</div>
+
+<div class="bottom-nav">
+    <div class="nav-item active" onclick="switchTab('tab-calc', this)">Rechner</div>
+    <div class="nav-item" onclick="switchTab('tab-settings', this)">Setup</div>
+    <div class="nav-item" onclick="switchTab('tab-history', this)">Verlauf</div>
+</div>
+
+<script>
+    function switchTab(tabId, el) { 
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active')); 
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active')); 
+        document.getElementById(tabId).classList.add('active'); 
+        el.classList.add('active'); 
+    }
+    
+    let profiles = { morgens:{icr:20,isf:60,ziel:120}, mittags:{icr:33,isf:60,ziel:120}, abends:{icr:30,isf:60,ziel:120} };
+    let syncSettings = { url: "", token: "" }; 
+    let historyData = []; 
+    let currentCalc = null;
+    
+    window.onload = function() {
+        if(localStorage.getItem('insulinProfiles')) profiles = JSON.parse(localStorage.getItem('insulinProfiles'));
+        if(localStorage.getItem('insulinHistory')) historyData = JSON.parse(localStorage.getItem('insulinHistory'));
+        if(localStorage.getItem('insulinSync')) syncSettings = JSON.parse(localStorage.getItem('insulinSync'));
+        
+        loadProfile(); 
+        document.getElementById('sync_url').value = syncSettings.url; 
+        document.getElementById('sync_token').value = syncSettings.token; 
+        renderHistory();
+
+        // URL Parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        if(urlParams.has('ew')) document.getElementById('ew').value = urlParams.get('ew');
+        if(urlParams.has('fett')) document.getElementById('fett').value = urlParams.get('fett');
+        if(urlParams.has('kh')) document.getElementById('kh').value = urlParams.get('kh');
+    };
+    
+    function loadProfile() { 
+        let t = document.getElementById('profil_typ').value; 
+        document.getElementById('icr').value = profiles[t].icr; 
+        document.getElementById('isf').value = profiles[t].isf; 
+    }
+    
+    function saveProfile() { 
+        let t = document.getElementById('profil_typ').value; 
+        profiles[t].icr = parseFloat(document.getElementById('icr').value); 
+        profiles[t].isf = parseFloat(document.getElementById('isf').value); 
+        localStorage.setItem('insulinProfiles', JSON.stringify(profiles)); 
+    }
+    
+    function saveSyncSettings() { 
+        syncSettings.url = document.getElementById('sync_url').value.trim(); 
+        syncSettings.token = document.getElementById('sync_token').value; 
+        localStorage.setItem('insulinSync', JSON.stringify(syncSettings)); 
+    }
+    
+    function resetInputs() { 
+        ['kh','ew','fett','sport','bz_aktuell','bz_trend','last_bolus','last_time'].forEach(id => document.getElementById(id).value = ""); 
+        document.getElementById('result').style.display = 'none'; 
+        // Remove URL params visually
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+    
+    function berechne() {
+        let kh = parseFloat(document.getElementById('kh').value)||0; 
+        let ew = parseFloat(document.getElementById('ew').value)||0; 
+        let fett = parseFloat(document.getElementById('fett').value)||0; 
+        let sport = parseFloat(document.getElementById('sport').value)||0;
+        let lb = parseFloat(document.getElementById('last_bolus').value)||0; 
+        let lt = parseFloat(document.getElementById('last_time').value)||0;
+        let icr = parseFloat(document.getElementById('icr').value); 
+        let isf = parseFloat(document.getElementById('isf').value); 
+        let bz = parseFloat(document.getElementById('bz_aktuell').value);
+        let bzTrend = parseFloat(document.getElementById('bz_trend').value)||0;
+
+        // Lyumjev hardcoded to 2h duration
+        let iob = (lb > 0 && lt < 2) ? lb * ((2 - lt)/2) : 0;
+        let insKh = kh / icr; 
+        let insKorr = isNaN(bz) ? 0 : ((bz + (bzTrend*2)) - 120) / isf - iob;
+        
+        let fpeCount = ((fett * 9) + (ew * 4)) / 100;
+        let insFpe = fpeCount * (10 / icr); 
+        let totS = Math.max(0, (insKh + insKorr) * (sport>0 ? (100-sport)/100 : 1));
+
+        document.getElementById('res_kh').innerText = insKh.toFixed(2)+" IE"; 
+        document.getElementById('res_korr_raw').innerText = insKorr.toFixed(2)+" IE"; 
+        document.getElementById('res_total').innerText = totS.toFixed(2)+" IE"; 
+        document.getElementById('res_fpe_insulin').innerText = insFpe.toFixed(2)+" IE";
+        
+        if (iob > 0) {
+            document.getElementById('iob_display').style.display = 'flex';
+            document.getElementById('res_iob').innerText = iob.toFixed(2)+" IE";
+        } else {
+            document.getElementById('iob_display').style.display = 'none';
+        }
+
+        // Dynamische SEA Logik inkl. Trend
+        let timingText = "Unklar";
+        if (!isNaN(bz)) {
+            if (bz < 70) {
+                timingText = "Hypo! Erst essen, später spritzen";
+            } else if (bzTrend <= -10) {
+                timingText = "Stark fallend: Kein SEA";
+            } else if (bzTrend <= -3 && bz < 130) {
+                timingText = "Fallend: Direkt zum Essen";
+            } else if (bz > 180 && bzTrend > -5) {
+                timingText = bzTrend >= 5 ? "Hoch & steigend: 20 Min SEA" : "Hoch: 15-20 Min SEA";
+            } else if (bzTrend >= 5) {
+                timingText = "Steigend: 15-20 Min SEA";
+            } else {
+                timingText = "Standard: 10-15 Min SEA";
+            }
+        }
+        document.getElementById('res_timing_text').innerText = timingText;
+
+        // FPE Split Empfehlung
+        if(insFpe > 0) {
+            document.getElementById('fpe_split_line').style.display = 'flex';
+            let fpeText = "";
+            if (fpeCount <= 1.5) {
+                fpeText = `${insFpe.toFixed(1)} IE in ca. 1.5 - 2 Std.`;
+            } else if (fpeCount <= 2.5) {
+                let half = (insFpe / 2).toFixed(1);
+                fpeText = `${half} IE in 1.5 Std, ${half} IE in 3 Std.`;
+            } else {
+                let half = (insFpe / 2).toFixed(1);
+                fpeText = `${half} IE in 2 Std, ${half} IE in 4 Std.`;
+            }
+            document.getElementById('res_fpe_split').innerText = fpeText;
+        } else {
+            document.getElementById('fpe_split_line').style.display = 'none';
+        }
+
+        document.getElementById('result').style.display = 'block';
+
+        let now = new Date(); 
+        currentCalc = { 
+            time: `${now.getDate()}/${now.getMonth()+1}/${now.getFullYear().toString().slice(-2)} ${now.getHours()}:${now.getMinutes()}`, 
+            kh:kh, ew:ew, fett:fett, sport:sport, bz:isNaN(bz)?"-":bz, bz_trend:bzTrend, iob:iob.toFixed(2), icr:icr, isf:isf, insulin_typ:"Lyumjev", ie_sofort:totS.toFixed(1), ie_fpe:insFpe.toFixed(1), token:syncSettings.token 
+        };
+    }
+    
+    async function saveToHistory() {
+        if(!currentCalc) return; 
+        const btn = document.getElementById('save_btn'); 
+        btn.innerText = "Sync..."; btn.disabled = true;
+        
+        historyData.unshift(currentCalc); 
+        localStorage.setItem('insulinHistory', JSON.stringify(historyData));
+        
+        if (syncSettings.url) {
+            try { await fetch(syncSettings.url, { method: "POST", mode: "no-cors", body: JSON.stringify(currentCalc) }); } catch(e) {}
+        }
+        
+        renderHistory(); resetInputs(); 
+        btn.innerText = "Speichern & Cloud Sync"; btn.disabled = false; 
+        switchTab('tab-history', document.querySelectorAll('.nav-item')[2]);
+    }
+    
+    async function loadFromCloud() {
+        if (!syncSettings.url || !syncSettings.token) { alert("URL/Passwort fehlen!"); return; }
+        const btn = document.getElementById('load_btn'); btn.innerText = "Lade..."; btn.disabled = true;
+        try {
+            const resp = await fetch(`${syncSettings.url}?token=${syncSettings.token}`);
+            const data = await resp.json();
+            if (Array.isArray(data)) { historyData = data; localStorage.setItem('insulinHistory', JSON.stringify(historyData)); renderHistory(); alert("Cloud-Daten geladen!"); }
+        } catch(e) { alert("Fehler beim Laden"); }
+        btn.innerText = "Cloud Download"; btn.disabled = false;
+    }
+    
+    function renderHistory() {
+        let l = document.getElementById('history_list'); l.innerHTML = historyData.length===0?"<p>Leer.</p>":"";
+        historyData.forEach((i,idx) => {
+            let d=document.createElement('div'); d.className="history-item";
+            d.innerHTML = `<button class="btn-delete" onclick="historyData.splice(${idx},1);localStorage.setItem('insulinHistory',JSON.stringify(historyData));renderHistory()">X</button><div class="history-time">${i.time}</div><div><b>${i.kh}g</b> KH • BZ: <b>${i.bz}</b></div><div style="color:#007bff; font-weight:bold">${i.ie_sofort} IE</div>` + (i.ie_fpe>0?`<div style="color:#d35400; font-size:0.8rem">+ ${i.ie_fpe} IE FPE</div>`:"");
+            l.appendChild(d);
+        });
+    }
+    
+    function exportToCSV() { 
+        let c = "Datum;KH;EW;Fett;Sport;BZ;Trend;IOB;ICR;ISF;Typ;Sofort;FPE\n" + historyData.map(i=>`${i.time};${i.kh};${i.ew};${i.fett};${i.sport};${i.bz};${i.bz_trend};${i.iob};${i.icr};${i.isf};${i.insulin_typ};${i.ie_sofort};${i.ie_fpe}`).join("\n"); 
+        let a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([c], {type:'text/csv'})); a.download = "insulin_export.csv"; a.click(); 
+    }
+</script>
+</body>
+</html>
