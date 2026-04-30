@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Insulin App - Tabs v23</title>
+    <title>Insulin App - Tabs v24</title>
     <style>
         body { font-family: -apple-system, sans-serif; background: #f4f4f9; color: #333; margin: 0; padding: 20px 20px 80px 20px; }
         .container { max-width: 400px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
@@ -97,7 +97,7 @@
 
         <p class="warning">DEMO-VERSION. KEIN MEDIZINPRODUKT.</p>
         <div class="license-footer">
-            App by <strong>punkueberfall</strong> • 2026<br>
+            App by <strong>punkueberfall</strong> • 2025<br>
             Lizenz: CC BY-NC-SA 4.0
         </div>
     </div>
@@ -137,9 +137,9 @@
 </div>
 
 <div class="bottom-nav">
-    <div class="nav-item active" onclick="switchTab('tab-calc', this)">🧮<br>Rechner</div>
-    <div class="nav-item" onclick="switchTab('tab-settings', this)">⚙️<br>Setup</div>
-    <div class="nav-item" onclick="switchTab('tab-history', this)">📜<br>Verlauf</div>
+    <div class="nav-item active" onclick="switchTab('tab-calc', this)">Rechner</div>
+    <div class="nav-item" onclick="switchTab('tab-settings', this)">Setup</div>
+    <div class="nav-item" onclick="switchTab('tab-history', this)">Verlauf</div>
 </div>
 
 <script>
@@ -157,6 +157,13 @@
         if(localStorage.getItem('insulinProfiles')) profiles = JSON.parse(localStorage.getItem('insulinProfiles'));
         if(localStorage.getItem('insulinHistory')) historyData = JSON.parse(localStorage.getItem('insulinHistory'));
         loadProfile(); renderHistory();
+
+        // URL Parameter auslesen und eintragen
+        const urlParams = new URLSearchParams(window.location.search);
+        if(urlParams.has('ew')) document.getElementById('ew').value = urlParams.get('ew');
+        if(urlParams.has('fett')) document.getElementById('fett').value = urlParams.get('fett');
+        if(urlParams.has('kh')) document.getElementById('kh').value = urlParams.get('kh');
+        if(urlParams.has('bz')) document.getElementById('bz_aktuell').value = urlParams.get('bz');
     };
 
     function loadProfile() {
@@ -181,6 +188,8 @@
     function resetInputs() {
         ['kh','ew','fett','sport','bz_aktuell','bz_trend','last_bolus','last_time'].forEach(id => document.getElementById(id).value = "");
         document.getElementById('result').style.display = 'none'; currentCalc = null;
+        // URL Parameter aus der Adresszeile entfernen, ohne die Seite neu zu laden
+        window.history.replaceState({}, document.title, window.location.pathname);
     }
 
     function berechne() {
