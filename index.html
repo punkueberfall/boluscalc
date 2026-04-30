@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Insulin Rechner v21</title>
+    <title>Insulin Rechner v22</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -43,34 +43,35 @@
             justify-content: space-between;
             align-items: center;
         }
+        
+        /* Button Layout */
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 25px;
+        }
         button {
-            width: 100%;
+            flex: 2;
             background-color: #007bff;
             color: white;
             padding: 15px;
             border: none;
             border-radius: 8px;
             font-size: 1.1rem;
-            margin-top: 25px;
             cursor: pointer;
         }
         button:active { background-color: #0056b3; }
         
-        .btn-save { background-color: #28a745; margin-top: 15px; padding: 10px; font-size: 1rem; }
-        
-        /* Backup Buttons */
-        .backup-zone {
-            display: flex;
-            gap: 10px;
-            margin-top: 10px;
-        }
-        .btn-backup {
+        .btn-reset {
             flex: 1;
             background-color: #6c757d;
-            font-size: 0.75rem;
-            padding: 8px;
-            margin-top: 0;
+            font-size: 1rem;
         }
+        .btn-reset:active { background-color: #5a6268; }
+        
+        .btn-save { background-color: #28a745; margin-top: 15px; width: 100%; font-size: 1rem; padding: 10px; }
+        .backup-zone { display: flex; gap: 10px; margin-top: 10px; }
+        .btn-backup { flex: 1; background-color: #6c757d; font-size: 0.75rem; padding: 8px; margin-top: 0; }
 
         /* Ergebnis Bereich Styles */
         #result {
@@ -81,89 +82,34 @@
             border-radius: 12px;
             display: none;
         }
-        .result-small {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.85rem;
-            color: #666;
-            margin-bottom: 4px;
-        }
-        .iob-alert {
-            font-size: 0.8rem;
-            color: #d35400;
-            text-align: right;
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-        .trend-info {
-            font-size: 0.8rem;
-            color: #888;
-            text-align: right;
-            font-style: italic;
-            margin-bottom: 10px;
-        }
+        .result-small { display: flex; justify-content: space-between; font-size: 0.85rem; color: #666; margin-bottom: 4px; }
+        .iob-alert { font-size: 0.8rem; color: #d35400; text-align: right; font-weight: bold; margin-bottom: 5px; }
+        .trend-info { font-size: 0.8rem; color: #888; text-align: right; font-style: italic; margin-bottom: 10px; }
+        .limit-alert { font-size: 0.9rem; color: #dc3545; text-align: center; font-weight: bold; margin-top: 15px; padding: 10px; border: 1px solid #dc3545; border-radius: 6px; background-color: #f8d7da; display: none; }
         
         /* Hauptzahlen */
-        .result-big-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px 0;
-            border-top: 1px solid #dae0e5;
-        }
+        .result-big-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-top: 1px solid #dae0e5; }
         .label-main { font-weight: bold; font-size: 1.1rem; }
         .val-main { font-weight: 800; font-size: 1.4rem; }
-        
         .color-blue { color: #007bff; }
         .color-orange { color: #d35400; }
 
         /* Timing Box unten */
-        .info-box {
-            background-color: #fff;
-            border: 1px solid #e2e6ea;
-            border-radius: 8px;
-            padding: 10px;
-            margin-top: 15px;
-        }
-        .info-line {
-            margin-bottom: 5px;
-            font-size: 0.9rem;
-            display: flex;
-            justify-content: space-between;
-        }
+        .info-box { background-color: #fff; border: 1px solid #e2e6ea; border-radius: 8px; padding: 10px; margin-top: 15px; }
+        .info-line { margin-bottom: 5px; font-size: 0.9rem; display: flex; justify-content: space-between; }
         .info-label { font-weight: bold; color: #555; }
         
         /* Historie Logbuch */
-        .history-container {
-            margin-top: 30px;
-            border-top: 2px solid #eee;
-            padding-top: 15px;
-        }
-        .history-item {
-            background: #fff;
-            border: 1px solid #ddd;
-            border-left: 4px solid #007bff;
-            padding: 10px;
-            margin-bottom: 10px;
-            border-radius: 6px;
-            font-size: 0.85rem;
-            position: relative;
-        }
+        .history-container { margin-top: 30px; border-top: 2px solid #eee; padding-top: 15px; }
+        .history-item { background: #fff; border: 1px solid #ddd; border-left: 4px solid #007bff; padding: 10px; margin-bottom: 10px; border-radius: 6px; font-size: 0.85rem; position: relative; }
         .history-time { color: #888; font-size: 0.75rem; margin-bottom: 4px; }
         .history-details { display: flex; justify-content: space-between; }
         .history-val { font-weight: bold; color: #333; }
         .history-ie { font-weight: bold; color: #007bff; font-size: 1rem; }
-        .btn-delete {
-            position: absolute; top: 5px; right: 5px;
-            background: none; border: none; color: #dc3545;
-            cursor: pointer; font-size: 0.9rem; padding: 5px; width: auto; margin: 0;
-        }
+        .btn-delete { position: absolute; top: 5px; right: 5px; background: none; border: none; color: #dc3545; cursor: pointer; font-size: 0.9rem; padding: 5px; width: auto; margin: 0; }
 
         .warning { font-size: 0.7rem; color: #999; text-align: center; margin-top: 20px; }
-        .license-footer {
-            font-size: 0.7rem; color: #bbb; text-align: center;
-            margin-top: 15px; padding-top: 10px; border-top: 1px dashed #eee;
-        }
+        .license-footer { font-size: 0.7rem; color: #bbb; text-align: center; margin-top: 15px; padding-top: 10px; border-top: 1px dashed #eee; }
     </style>
 </head>
 <body>
@@ -171,13 +117,15 @@
 <div class="container">
     <h2>Insulin Rechner</h2>
 
-    <div class="section-title">Essen</div>
-        <label>Eiweiß (g)</label>
+    <div class="section-title">Essen & Aktivitaet</div>
+       <label>Eiweiss (g)</label>
     <input type="number" id="ew" placeholder="0">
     <label>Fett (g)</label>
     <input type="number" id="fett" placeholder="0">
-    <label>Kohlenhydrate (g)</label>
+     <label>Kohlenhydrate (g)</label>
     <input type="number" id="kh" placeholder="0">
+    <label>Sport / Anpassung (% Reduktion)</label>
+    <input type="number" id="sport" placeholder="0">
 
     <div class="section-title">Blutzucker (mg/dl)</div>
     <label>Aktueller BZ</label>
@@ -204,6 +152,8 @@
     <input type="number" id="isf" onchange="saveProfile()">
     <label>Ziel BZ</label>
     <input type="number" id="bz_ziel" value="120" onchange="saveProfile()">
+    <label>Maximaler Bolus (IE Limit)</label>
+    <input type="number" id="max_bolus" value="15" onchange="saveProfile()">
 
     <label>Insulin Typ</label>
     <select id="insulin_typ" onchange="updateWirkdauer()">
@@ -214,21 +164,31 @@
     <label>Wirkdauer (Std.)</label>
     <input type="number" id="wirkdauer" value="2.0">
 
-    <button onclick="berechne()">Berechnen</button>
+    <div class="btn-group">
+        <button onclick="berechne()">Berechnen</button>
+        <button class="btn-reset" onclick="resetInputs()">Reset</button>
+    </div>
 
     <div id="result">
         <div class="result-small"><span>Anteil KH:</span> <span id="res_kh">0.0 IE</span></div>
         <div class="result-small"><span>Anteil Korrektur:</span> <span id="res_korr_raw">0.0 IE</span></div>
         <div class="iob-alert" id="iob_display" style="display:none;">- Aktives IOB: <span id="res_iob">0.0</span> IE</div>
         <div class="result-small"><span>Anteil FPE:</span> <span id="res_fpe_small">0.0 IE</span></div>
+        <div class="result-small" id="sport_display" style="display:none; color:#007bff; font-weight:bold;"><span>Sport Reduktion:</span> <span id="res_sport">0%</span></div>
         <div class="trend-info" id="trend_note"></div>
+        
         <div class="result-big-row color-blue"><span class="label-main">Sofort Bolus:</span><span class="val-main" id="res_total">0.0 IE</span></div>
         <div class="result-big-row color-orange"><span class="label-main">FPE Bolus:</span><span class="val-main" id="res_fpe_insulin">0.0 IE</span></div>
+        
         <div class="info-box">
-            <div class="info-line"><span class="info-label">🕒 Injektion:</span><span id="res_timing_text">-</span></div>
-            <div class="info-line"><span class="info-label">⏳ FPE Dauer:</span><span><span id="res_fpe_time">-</span> <span id="res_fpe_count" style="display:none"></span></span></div>
+            <div class="info-line"><span class="info-label">Injektion:</span><span id="res_timing_text">-</span></div>
+            <div class="info-line"><span class="info-label">FPE Dauer:</span><span><span id="res_fpe_time">-</span> <span id="res_fpe_count" style="display:none"></span></span></div>
+            <div class="info-line" id="fpe_split_line" style="display:none;"><span class="info-label">FPE Split:</span><span id="res_fpe_split" style="text-align:right;">-</span></div>
         </div>
-        <button class="btn-save" onclick="saveToHistory()">💉 In Historie speichern</button>
+        
+        <div class="limit-alert" id="max_warning">Achtung: Maximal-Bolus ueberschritten!</div>
+        
+        <button class="btn-save" onclick="saveToHistory()">In Historie speichern</button>
     </div>
 
     <div class="history-container">
@@ -238,8 +198,8 @@
         </div>
         
         <div class="backup-zone">
-            <button class="btn-backup" onclick="exportToCSV()">📥 Export CSV</button>
-            <button class="btn-backup" onclick="triggerImport()">📤 Import</button>
+            <button class="btn-backup" onclick="exportToCSV()">Export CSV</button>
+            <button class="btn-backup" onclick="triggerImport()">Import</button>
             <input type="file" id="importFile" style="display:none" onchange="importData(event)">
         </div>
 
@@ -252,9 +212,9 @@
 
 <script>
     let profiles = {
-        morgens: { icr: 20, isf: 60, ziel: 120 },
-        mittags: { icr: 33, isf: 60, ziel: 120 },
-        abends:  { icr: 30, isf: 60, ziel: 120 }
+        morgens: { icr: 20, isf: 60, ziel: 120, maxbolus: 15 },
+        mittags: { icr: 33, isf: 60, ziel: 120, maxbolus: 15 },
+        abends:  { icr: 30, isf: 60, ziel: 120, maxbolus: 15 }
     };
     let historyData = [];
     let currentCalc = null;
@@ -262,13 +222,16 @@
     window.onload = function() {
         let savedProfiles = localStorage.getItem('insulinProfiles');
         if (savedProfiles) profiles = JSON.parse(savedProfiles);
+        
+        // Kompatibilitaet mit alten Daten (falls maxbolus fehlt)
+        for (let key in profiles) {
+            if (!profiles[key].maxbolus) profiles[key].maxbolus = 15;
+        }
+
         let savedHistory = localStorage.getItem('insulinHistory');
         if (savedHistory) historyData = JSON.parse(savedHistory);
         loadProfile();
         renderHistory();
-        
-        // Removed updateWirkdauer() call here so it doesn't overwrite the static 2.0 value if someone loads the page but has it set differently in their mind, 
-        // though updateWirkdauer would also set it to 2.0 now.
     };
 
     function loadProfile() {
@@ -276,6 +239,7 @@
         document.getElementById('icr').value = profiles[typ].icr;
         document.getElementById('isf').value = profiles[typ].isf;
         document.getElementById('bz_ziel').value = profiles[typ].ziel;
+        document.getElementById('max_bolus').value = profiles[typ].maxbolus || 15;
     }
 
     function saveProfile() {
@@ -283,6 +247,7 @@
         profiles[typ].icr = parseFloat(document.getElementById('icr').value) || 33;
         profiles[typ].isf = parseFloat(document.getElementById('isf').value) || 60;
         profiles[typ].ziel = parseFloat(document.getElementById('bz_ziel').value) || 120;
+        profiles[typ].maxbolus = parseFloat(document.getElementById('max_bolus').value) || 15;
         localStorage.setItem('insulinProfiles', JSON.stringify(profiles));
     }
 
@@ -294,15 +259,25 @@
         else if (typ === 'regular') dauerFeld.value = "6.0";
     }
 
-    // --- CSV EXPORT ---
+    function resetInputs() {
+        document.getElementById('kh').value = "";
+        document.getElementById('ew').value = "";
+        document.getElementById('fett').value = "";
+        document.getElementById('sport').value = "";
+        document.getElementById('bz_aktuell').value = "";
+        document.getElementById('bz_trend').value = "";
+        document.getElementById('last_bolus').value = "";
+        document.getElementById('last_time').value = "";
+        document.getElementById('result').style.display = 'none';
+        currentCalc = null;
+    }
+
     function exportToCSV() {
         if (historyData.length === 0) { alert("Keine Daten zum Exportieren!"); return; }
-        
         let csvContent = "Datum;KH;BZ;Bolus_Sofort;Bolus_FPE\n";
         historyData.forEach(item => {
             csvContent += `${item.time};${item.kh};${item.bz};${item.ie_sofort};${item.ie_fpe}\n`;
         });
-
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
         const url = URL.createObjectURL(blob);
@@ -314,7 +289,6 @@
         document.body.removeChild(link);
     }
 
-    // --- IMPORT ---
     function triggerImport() { document.getElementById('importFile').click(); }
 
     function importData(event) {
@@ -336,7 +310,7 @@
                     }
                 }
                 if (newHistory.length > 0) {
-                    if (confirm(`${newHistory.length} Einträge gefunden. Bestehende Historie überschreiben?`)) {
+                    if (confirm(`${newHistory.length} Eintraege gefunden. Bestehende Historie ueberschreiben?`)) {
                         historyData = newHistory;
                         localStorage.setItem('insulinHistory', JSON.stringify(historyData));
                         renderHistory();
@@ -347,7 +321,6 @@
         reader.readAsText(file);
     }
 
-    // --- RECHNUNG & REST ---
     function getFormattedTimestamp() {
         const now = new Date();
         return `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getFullYear()).slice(-2)} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
@@ -357,10 +330,12 @@
         let kh = parseFloat(document.getElementById('kh').value) || 0;
         let ew = parseFloat(document.getElementById('ew').value) || 0;
         let fett = parseFloat(document.getElementById('fett').value) || 0;
+        let sport = parseFloat(document.getElementById('sport').value) || 0;
         let lastBolus = parseFloat(document.getElementById('last_bolus').value) || 0;
         let lastTime = parseFloat(document.getElementById('last_time').value) || 0;
         let icr = parseFloat(document.getElementById('icr').value);
         let isf = parseFloat(document.getElementById('isf').value);
+        let maxBolusLimit = parseFloat(document.getElementById('max_bolus').value) || 15;
         let wirkdauer = parseFloat(document.getElementById('wirkdauer').value) || 2;
         let bzInput = document.getElementById('bz_aktuell').value;
         let bz_aktuell = parseFloat(bzInput) || 0;
@@ -387,22 +362,61 @@
         let insulinFpe = fpeCount * (10 / icr);
         let totalSofort = Math.max(0, insulinKh + insulinKorrNet);
 
+        // Sport Reduktion anwenden
+        if (sport > 0) {
+            let faktor = (100 - sport) / 100;
+            totalSofort = totalSofort * faktor;
+            insulinFpe = insulinFpe * faktor;
+        }
+
         document.getElementById('res_kh').innerText = insulinKh.toFixed(2) + " IE";
         document.getElementById('res_korr_raw').innerText = insulinKorrRaw.toFixed(2) + " IE";
+        
         if (iob > 0.05) {
             document.getElementById('res_iob').innerText = iob.toFixed(2);
             document.getElementById('iob_display').style.display = 'block';
         } else { document.getElementById('iob_display').style.display = 'none'; }
+        
+        if (sport > 0) {
+            document.getElementById('res_sport').innerText = sport + "%";
+            document.getElementById('sport_display').style.display = 'flex';
+        } else { document.getElementById('sport_display').style.display = 'none'; }
+        
         document.getElementById('res_fpe_small').innerText = insulinFpe.toFixed(2) + " IE";
         document.getElementById('res_total').innerText = totalSofort.toFixed(2) + " IE";
         document.getElementById('res_fpe_insulin').innerText = insulinFpe.toFixed(2) + " IE";
         
+        // FPE Split Logik
+        let fpeTimeText = "-";
+        if (fpeCount > 0.5) {
+            if (fpeCount <= 1.5) fpeTimeText = "3 Std.";
+            else if (fpeCount <= 3.0) fpeTimeText = "4-5 Std.";
+            else fpeTimeText = "Max. 6 Std.";
+            
+            if (insulinFpe > 0) {
+                let half = (insulinFpe / 2).toFixed(1);
+                let waitTime = fpeCount <= 1.5 ? "1.5 Std" : (fpeCount <= 3.0 ? "2 Std" : "3 Std");
+                document.getElementById('res_fpe_split').innerText = `${half} IE jetzt, ${half} IE in ${waitTime}`;
+                document.getElementById('fpe_split_line').style.display = 'flex';
+            }
+        } else {
+            document.getElementById('fpe_split_line').style.display = 'none';
+        }
+        
         let timingText = "Ohne BZ unklar";
         if (bzInput !== "") {
-            if (bz_aktuell < 70) timingText = "⚠️ Erst essen (Hypo)!";
+            if (bz_aktuell < 70) timingText = "Erst essen (Hypo)!";
             else timingText = bz_aktuell > 180 ? "15-20 Min warten" : "10-15 Min SEA";
         }
         document.getElementById('res_timing_text').innerText = timingText;
+        
+        // Max Bolus Warnung
+        if (totalSofort > maxBolusLimit) {
+            document.getElementById('max_warning').style.display = 'block';
+        } else {
+            document.getElementById('max_warning').style.display = 'none';
+        }
+        
         document.getElementById('result').style.display = 'block';
 
         currentCalc = {
@@ -417,11 +431,11 @@
         if (historyData.length > 50) historyData.pop();
         localStorage.setItem('insulinHistory', JSON.stringify(historyData));
         renderHistory();
-        alert("Gespeichert!");
+        resetInputs();
     }
 
     function deleteHistoryItem(index) {
-        if(confirm("Löschen?")) { historyData.splice(index, 1); localStorage.setItem('insulinHistory', JSON.stringify(historyData)); renderHistory(); }
+        if(confirm("Loeschen?")) { historyData.splice(index, 1); localStorage.setItem('insulinHistory', JSON.stringify(historyData)); renderHistory(); }
     }
 
     function renderHistory() {
@@ -430,7 +444,7 @@
         historyData.forEach((item, index) => {
             let div = document.createElement('div');
             div.className = "history-item";
-            div.innerHTML = `<button class="btn-delete" onclick="deleteHistoryItem(${index})">✕</button><div class="history-time">${item.time}</div><div class="history-details"><div><span class="history-val">${item.kh}g</span> KH • BZ: <span class="history-val">${item.bz}</span></div><div class="history-ie">${item.ie_sofort} IE</div></div>`;
+            div.innerHTML = `<button class="btn-delete" onclick="deleteHistoryItem(${index})">X</button><div class="history-time">${item.time}</div><div class="history-details"><div><span class="history-val">${item.kh}g</span> KH • BZ: <span class="history-val">${item.bz}</span></div><div class="history-ie">${item.ie_sofort} IE</div></div>`;
             if (parseFloat(item.ie_fpe) > 0) div.innerHTML += `<div style="font-size:0.75rem; color:#d35400; text-align:right;">+ ${item.ie_fpe} IE FPE</div>`;
             listEl.appendChild(div);
         });
