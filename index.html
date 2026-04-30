@@ -124,7 +124,23 @@
         document.getElementById('res_fpe_insulin').innerText = insFpe.toFixed(2)+" IE";
         
         // SEA Logik wiederhergestellt
-        let timingText = isNaN(bz) ? "Unklar" : (bz < 70 ? "Hypo!" : (bz > 180 ? "15-20 Min" : "10-15 Min"));
+       // Dynamische SEA Logik inkl. Trend
+        let timingText = "Unklar";
+        if (!isNaN(bz)) {
+            if (bz < 70) {
+                timingText = "Hypo! Erst essen, später spritzen";
+            } else if (bzTrend <= -10) {
+                timingText = "Stark fallend: Kein SEA (Spritzen zum/nach Essen)";
+            } else if (bzTrend <= -3 && bz < 130) {
+                timingText = "Fallend: Spritzen direkt zum Essen";
+            } else if (bz > 180 && bzTrend > -5) {
+                timingText = bzTrend >= 5 ? "Hoch & steigend: 20 Min SEA" : "Hoch: 15-20 Min SEA";
+            } else if (bzTrend >= 5) {
+                timingText = "Steigend: 15-20 Min SEA";
+            } else {
+                timingText = "Standard: 10-15 Min SEA";
+            }
+        }
         document.getElementById('res_timing_text').innerText = timingText;
 
         document.getElementById('result').style.display = 'block';
