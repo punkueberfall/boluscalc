@@ -1,2 +1,2 @@
 # boluscalc
-boluscalc that includes fpe and a simple cgm trend delta for calculation
+boluscalc that includes fpu and a simple cgm trend delta for calculation
